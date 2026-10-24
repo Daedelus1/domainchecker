@@ -10,7 +10,7 @@ import (
 const (
 	SERVER_URI  = "ws://localhost:8080/ws"
 	ORIGIN_URI  = "http://localhost/"
-	MEMORY_PATH = "domainchecker-memory.json"
+	MEMORY_PATH = "/tmp/domainchecker/domainchecker-memory.json"
 )
 
 // main connects to SERVER_URI and blocks until the connection is torn down

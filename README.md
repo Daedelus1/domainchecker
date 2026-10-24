@@ -222,6 +222,7 @@ most likely ones to tune:
 | `HEARTBEAT_INTERVAL`          | 3s                       | `server/clientmanager/client-manager.go` — how often the server pings each client                                           |
 | `SERVER_URI`                  | `ws://localhost:8080/ws` | `client/main/main.go` — where the client connects                                                                           |
 | `MEMORY_PATH`                 | `domainchecker-memory.json` | `client/main/main.go` — where remembered decisions are saved to and loaded from                                          |
+| `LOG_PATH`                    | `domainchecker-server.log` | `server/main/main.go` — where the server logs to (falls back to stderr if unwritable); never stdout, which is reserved for Squid's helper protocol |
 
 `REQUEST_TIMEOUT_DURATION` should stay comfortably larger than
 `USER_INPUT_TIMEOUT_DURATION` — it needs to leave room for the client's own
