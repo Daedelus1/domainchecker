@@ -1,0 +1,89 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!--
+  Example deny_info template for use with domainchecker. Based on Squid's
+  stock ERR_ACCESS_DENIED, with one addition: an "errorReason" block that
+  prints %o, the external_acl_type helper's message= value -- this is
+  where a DenyMessage from shared/deny_messages.go (e.g. "Denied
+  (remembered for this domain)") shows up.
+
+  %o is simply empty if the helper didn't send a message=, so this block
+  degrades gracefully for any other external ACL that doesn't set one --
+  no conditional logic is needed in the template itself.
+
+  See README.md's "Surfacing denial reasons" section for how to install
+  this and point Squid at it.
+-->
+<HTML><HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=utf-8">
+<TITLE>ERROR: The requested URL could not be retrieved</TITLE>
+<STYLE type="text/css"><!--
+ /*
+  * Squid style sheet for CacheMgr pages. Adaptable for use in squid error
+  * pages as well, if you wish to make the layout of ssl_error, errorpage.css
+  * and this file consistent.
+  */
+body
+:lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; }
+:lang(he) { direction: rtl; }
+ {
+	font-family: Verdana, sans-serif;
+	font-size: 14px;
+	background-color: #ffffff;
+	color: #000000;
+}
+h1 {
+	font-size: 1.3em;
+	font-weight: bold;
+	color: #000000;
+}
+h2 {
+	font-size: 1.1em;
+	font-weight: bold;
+	color: #000000;
+}
+hr {
+	margin: 0;
+	border-top: 1px solid #000000;
+}
+#errorReason {
+	background-color: #fff3cd;
+	border: 1px solid #ffe69c;
+	border-radius: 4px;
+	padding: 0.75em 1em;
+	margin: 1em 0;
+}
+--></STYLE>
+</HEAD><BODY>
+<H1>ERROR</H1>
+<H2>The requested URL could not be retrieved</H2>
+<HR noshade size="1px">
+<P>
+The following error was encountered while trying to retrieve the URL:
+<A HREF="%U">%U</A>
+</P>
+
+<BLOCKQUOTE id="errorMessage">
+Access Denied.
+</BLOCKQUOTE>
+
+<!-- %o is domainchecker's DenyMessage, e.g. "Denied (no response from
+     client)" or "Denied (remembered for this domain)". Empty, and this
+     whole block renders as an empty box -- remove it if that's not
+     wanted for other external ACLs that don't set message=. -->
+<DIV id="errorReason">
+<B>Reason:</B> %o
+</DIV>
+
+<P>
+Access control configuration prevents your request from being allowed at
+this time. Please contact your administrator if you feel this is
+incorrect.
+</P>
+
+<P>Your cache administrator is <A HREF="mailto:%w%W">%w</A>.</P>
+<BR clear="all">
+<HR noshade size="1px">
+<ADDRESS>
+Generated %T by %h (%s)
+</ADDRESS>
+</BODY></HTML>
