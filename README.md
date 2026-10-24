@@ -1,5 +1,7 @@
 # DomainChecker
 
+[![Go](https://github.com/Daedelus1/domainchecker/actions/workflows/go.yml/badge.svg)](https://github.com/Daedelus1/domainchecker/actions/workflows/go.yml)
+
 A [Squid](http://www.squid-cache.org/) `external_acl_type` helper that puts a
 human in the loop for web requests. Squid asks the helper "allow or deny
 this URL?"; the helper relays that question over a WebSocket to whoever is
