@@ -72,11 +72,18 @@ shared/websocketclient/    Shared WebSocket read/write loop used by both
                            the server (per connected client) and the client.
 shared/stdinhandler/       Reads human y/n answers from an injectable
                            io.Reader without blocking message handling.
+squid/                     A runnable example squid.conf, wired per
+                           Wiring into Squid and Surfacing denial reasons
+                           below, plus the custom error page it points at.
 ```
+
+`flake.nix`/`flake.lock` package both binaries with Nix — see
+[Building → With Nix](#with-nix).
 
 ## Requirements
 
-- Go 1.26 or later
+- Go 1.26 or later, **or**
+- Nix with flakes enabled (for the commands under [With Nix](#with-nix))
 
 ## Building
 
@@ -84,6 +91,25 @@ shared/stdinhandler/       Reads human y/n answers from an injectable
 go build -o domainchecker-server ./server/main
 go build -o domainchecker-client ./client/main
 ```
+
+### With Nix
+
+A flake is included for hermetic, reproducible builds — useful for baking
+a binary into a container image without needing a Go toolchain in that
+image at all (see
+[Deploying alongside Squid in a container](#deploying-alongside-squid-in-a-container)):
+
+```sh
+nix build .#domainchecker-server   # -> ./result/bin/domainchecker-server
+nix build .#domainchecker-client   # -> ./result/bin/domainchecker-client
+nix run .#domainchecker-server     # build + run in one step
+```
+
+Both are the same plain, statically-linked (`CGO_ENABLED=0`) binaries the
+`go build` commands above produce. `packages.<system>.default` is
+`domainchecker-server`. Other flakes can depend on this one directly —
+`domainchecker.packages.<system>.domainchecker-server` — to pull in the
+built binary as an input rather than building it themselves.
 
 ## Testing
 
