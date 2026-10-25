@@ -235,6 +235,54 @@ With that in place, a denied request shows the specific reason — e.g.
 "Denied (remembered for this domain)" — directly on the block page,
 instead of a generic "Access Denied".
 
+#### Exempting Claude Code's own infrastructure
+
+> **TODO (end user):** if you're running this in front of Claude Code (or
+> any agent whose own plumbing needs to stay reachable regardless of
+> human review), read this section and confirm
+> `server/clientmanager/request-registry.go`'s `allowedInfraDomains` set
+> matches your actual auth method before relying on it. It currently
+> exempts only `api.anthropic.com`. **If a domain you need seems to be
+> missing, please open an issue instead of editing the code directly** —
+> this is a security-relevant allowlist, and changes to it should go
+> through review rather than a silent local edit.
+
+Every request going through `ask_human` includes Claude Code's own API
+calls, auth, and telemetry traffic — not just the URLs the agent fetches
+as part of its actual work. Prompting a human for *that* traffic risks
+the agent failing to even boot if no one's watching the client at the
+exact right moment, so it's reasonable to exempt it — but only it. This
+exemption is implemented in domainchecker itself, not in Squid: a URL
+whose host is in `allowedInfraDomains`
+(`server/clientmanager/request-registry.go`) is approved by
+`RequestRegistry.MakeRequest` immediately, before it ever reaches a
+human or a client — deliberately kept as one source of truth instead of
+also maintaining a parallel Squid ACL that could drift out of sync.
+
+Claude Code's authoritative list of hosts it needs
+(<https://code.claude.com/docs/en/network-config>) breaks down as:
+
+- **Core plumbing** — `api.anthropic.com` (all API requests, feature
+  flags, telemetry) always; `claude.ai`/`claude.com`/`platform.claude.com`/`sso.claude.com`
+  only if this instance logs in interactively via OAuth/claude.ai rather
+  than a static `ANTHROPIC_API_KEY`.
+- **Feature-gated** (`mcp-proxy.anthropic.com`, `downloads.claude.ai`,
+  `code.claude.com`, etc.) — only matters if that specific feature is in
+  use; mostly irrelevant for a headless sandboxed agent.
+- **Pure telemetry** (the two Datadog intake hosts) — disable via
+  `DISABLE_TELEMETRY=1` instead of exempting; one env var beats adding
+  hosts to a permanent bypass list.
+
+**Do not add `registry.npmjs.org`, `github.com`, or anything else the
+agent reaches to actually do its work.** Those overlap exactly with the
+traffic this whole proxy exists to put a human in front of — an agent
+running `npm install` or cloning a repo is doing its job, not booting
+its own infrastructure, and exempting that defeats the point of
+deploying this at all. `allowedInfraDomains` is pre-populated with only
+`api.anthropic.com`, with the OAuth-login hosts present but commented
+out — confirm which your deployment actually needs rather than enabling
+both defensively.
+
 ## Configuration
 
 There's no config file; the relevant values are constants in source. The

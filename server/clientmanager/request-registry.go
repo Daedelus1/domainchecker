@@ -3,6 +3,7 @@ package clientmanager
 import (
 	"log/slog"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,6 +14,39 @@ const (
 	REQUEST_TIMEOUT_DURATION time.Duration = time.Second * 12
 	REQUEST_QUEUE_SIZE       int           = 100
 )
+
+// allowedInfraDomains is the set of hosts that MakeRequest auto-approves
+// without ever reaching a human or a client -- critical infrastructure a
+// tool like Claude Code needs just to function (auth, API, telemetry), as
+// opposed to anything it fetches as part of its actual work. Go has no
+// constant sets, so this is a var; treat it as one anyway -- it isn't
+// meant to be mutated at runtime. Keys are lowercase; lookups normalize
+// the hostname before checking, since hostnames are case-insensitive.
+//
+// See README.md's "Exempting Claude Code's own infrastructure" for the
+// full reasoning, and https://code.claude.com/docs/en/network-config for
+// the authoritative source this list is drawn from.
+//
+// Keep this set to infra only. Do NOT add package registries,
+// github.com, or anything else a tool reaches to do its actual work --
+// that traffic is exactly what this whole project exists to put a human
+// in front of; auto-approving it here defeats the point.
+var allowedInfraDomains = map[string]struct{}{
+	"api.anthropic.com": {},
+	// Only needed for interactive OAuth/claude.ai login, not a static
+	// ANTHROPIC_API_KEY -- uncomment if this deployment logs in that way.
+	// "claude.ai":             {},
+	// "claude.com":            {},
+	// "platform.claude.com":   {},
+	// "sso.claude.com":        {},
+}
+
+// isAllowedInfraDomain reports whether host (as returned by url.Hostname())
+// is in allowedInfraDomains, case-insensitively.
+func isAllowedInfraDomain(host string) bool {
+	_, ok := allowedInfraDomains[strings.ToLower(host)]
+	return ok
+}
 
 // clientDispatcher is the subset of ClientManager that RequestRegistry
 // needs to find and talk to connected clients, kept narrow so tests can
@@ -110,7 +144,9 @@ func (r *RequestRegistry) Close() {
 
 // MakeRequest submits url for approval and blocks until a client answers
 // the current attempt, or returns false immediately if no client is ever
-// connected. An attempt that goes unanswered for REQUEST_TIMEOUT_DURATION
+// connected -- except for url.Hostname() in allowedInfraDomains, which is
+// approved immediately without ever involving a human or a client. An
+// attempt that goes unanswered for REQUEST_TIMEOUT_DURATION
 // is retried under a new Attempt against whichever client is then current;
 // only a response tagged with the attempt that's current at the moment it
 // arrives can resolve the call, so a late answer to an already-superseded
@@ -120,6 +156,11 @@ func (r *RequestRegistry) Close() {
 // verbatim; it is "" whenever the first return value is true.
 func (r *RequestRegistry) MakeRequest(url url.URL) (bool, string) {
 	slog.Debug("Received request, processing...", "url", url.String())
+
+	if isAllowedInfraDomain(url.Hostname()) {
+		slog.Debug("Auto-approved infra domain, skipping human review", "url", url.String())
+		return true, ""
+	}
 
 	id := r.getNextId()
 	request := shared.UrlRequest{

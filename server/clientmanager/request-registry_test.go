@@ -182,6 +182,42 @@ func TestMakeRequestResolvesFromMatchingResponse(t *testing.T) {
 	}
 }
 
+// TestMakeRequestAutoApprovesInfraDomain confirms a host in
+// allowedInfraDomains is approved immediately, without ever reaching a
+// client -- using no connected client at all, which would otherwise be an
+// immediate denial (see TestMakeRequestNoClientConnected), to prove the
+// bypass really does short-circuit before any client involvement.
+func TestMakeRequestAutoApprovesInfraDomain(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFakeDispatcher()
+		r := startRegistry(f)
+		defer shutdown(r, f)
+
+		allowed, denyMessage := r.MakeRequest(mustParseURL(t, "https://api.anthropic.com/v1/messages"))
+
+		if !allowed {
+			t.Errorf("MakeRequest() = false, want true for an allowed infra domain")
+		}
+		if denyMessage != "" {
+			t.Errorf("MakeRequest() denyMessage = %q, want \"\"", denyMessage)
+		}
+		if sent := f.sentCalls(); len(sent) != 0 {
+			t.Errorf("sent %d requests, want 0 -- an infra domain must never reach a client", len(sent))
+		}
+	})
+}
+
+func TestIsAllowedInfraDomainIsCaseInsensitive(t *testing.T) {
+	for _, host := range []string{"api.anthropic.com", "API.ANTHROPIC.COM", "Api.Anthropic.Com"} {
+		if !isAllowedInfraDomain(host) {
+			t.Errorf("isAllowedInfraDomain(%q) = false, want true", host)
+		}
+	}
+	if isAllowedInfraDomain("evil-api.anthropic.com.attacker.example") {
+		t.Error("isAllowedInfraDomain() matched a lookalike host, want exact match only")
+	}
+}
+
 func TestMakeRequestNoClientConnected(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		f := newFakeDispatcher()
